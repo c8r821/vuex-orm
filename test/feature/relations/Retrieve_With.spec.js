@@ -135,6 +135,125 @@ describe('Feature – Relations – Retrieve – With', () => {
     expect(user2.posts[1].user).toBe(null)
   })
 
+  it('can resolve specified relations recursively', async () => {
+    class User extends Model {
+      static entity = 'users'
+
+      static fields () {
+        return {
+          id: this.attr(null),
+          comments: this.hasMany(Comment, 'user_id')
+        }
+      }
+    }
+    class Comment extends Model {
+      static entity = 'posts'
+
+      static fields () {
+        return {
+          id: this.attr(null),
+          comment: this.attr(''),
+          user_id: this.attr(null),
+          user: this.belongsTo(User, 'user_id'),
+          parent_id: this.attr(null),
+          children: this.hasMany(Comment, 'parent_id')
+        }
+      }
+    }
+
+    createStore([{ model: User }, { model: Comment }])
+
+    /* await User.create({
+      data: {
+        id: 1,
+        posts: [
+          {
+            id: 3,
+            user_id: 1,
+            user: { id: 1 }
+          },
+          {
+            id: 4,
+            user_id: 1,
+            user: { id: 1 }
+          }
+        ]
+      }
+    }) */
+
+    await Comment.create({
+      data: {
+        id: 0,
+        comment: 'Vuex-ORM is pretty great',
+        user: { id: 1 },
+        children: [
+          {
+            id: 2,
+            comment: 'You got that right!',
+            user: { id: 3 }
+          },
+          {
+            id: 4,
+            comment: 'And just so easy to use.',
+            user: { id: 5 },
+            children: [
+              {
+                id: 6,
+                comment: 'You can say that again',
+                user: { id: 1 }
+              }
+            ]
+          }
+        ]
+      }
+    })
+
+    const comment1 = Comment.query().withRecursive(['user', 'children']).first()
+    const comment2 = Comment.query().withRecursive(['user', 'children', 'comments']).first()
+    const comment3 = Comment.query().withRecursive(['user', 'children'], 0).first()
+
+    const user1 = User.query().withRecursive(['comments', 'children']).first()
+
+    // console.log(JSON.parse(JSON.stringify(comment2)))
+
+    expect(comment1.user.id).toBe(1)
+    expect(comment1.children[0].id).toBe(2)
+    expect(comment1.children[0].user.id).toBe(3)
+    expect(comment1.children[0].user.comments).toStrictEqual([])
+    expect(comment1.children[1].id).toBe(4)
+    expect(comment1.children[1].user.id).toBe(5)
+    expect(comment1.children[1].user.comments).toStrictEqual([])
+    expect(comment1.children[1].children[0].id).toBe(6)
+    expect(comment1.children[1].children[0].user.id).toBe(1)
+    expect(comment1.children[1].children[0].user.comments).toStrictEqual([])
+
+    expect(comment2.user.id).toBe(1)
+    expect(comment2.user.comments).toHaveLength(2)
+    expect(comment2.children[0].id).toBe(2)
+    expect(comment2.children[0].user.id).toBe(3)
+    expect(comment2.children[0].user.comments).toHaveLength(1)
+    expect(comment2.children[1].id).toBe(4)
+    expect(comment2.children[1].user.id).toBe(5)
+    expect(comment2.children[1].user.comments).toHaveLength(1)
+    expect(comment2.children[1].children[0].id).toBe(6)
+    expect(comment2.children[1].children[0].user.id).toBe(1)
+    expect(comment2.children[1].children[0].user.comments).toHaveLength(2)
+
+    expect(comment3.user.id).toBe(1)
+    expect(comment3.children[0].id).toBe(2)
+    expect(comment3.children[0].user).toBe(null)
+    expect(comment3.children[1].id).toBe(4)
+    expect(comment3.children[1].user).toBe(null)
+    expect(comment3.children[1].children).toStrictEqual([])
+
+    expect(user1.id).toBe(1)
+    expect(user1.comments).toHaveLength(2)
+    expect(user1.comments[0].id).toBe(0)
+    expect(user1.comments[0].children).toHaveLength(2)
+    expect(user1.comments[1].id).toBe(6)
+    expect(user1.comments[1].children).toStrictEqual([])
+  })
+
   it('can resolve child relation', () => {
     class User extends Model {
       static entity = 'users'

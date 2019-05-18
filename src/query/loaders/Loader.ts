@@ -36,7 +36,16 @@ export default class Loader {
   }
 
   /**
-   * Set relationships to be recursively eager loaded with the query.
+   * Set the relationships that should be recursively eager loaded with the query
+   */
+  static withRecursive (query: Query, name: string | string[], depth: number): void {
+    this.with(query, name, (relatedQuery) => {
+      depth > 0 && relatedQuery.withRecursive(name, depth - 1)
+    })
+  }
+
+  /**
+   * Set all relationships to be recursively eager loaded with the query.
    */
   static withAllRecursive (query: Query, depth: number): void {
     this.withAll(query, (relatedQuery) => {

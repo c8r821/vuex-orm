@@ -449,6 +449,15 @@ export default class Query<T extends Model = Model> {
   }
 
   /**
+   * Query set relations recursively
+   */
+  withRecursive (name: string | string[], depth: number = 3): this {
+    Loader.withRecursive(this, name, depth)
+
+    return this
+  }
+
+  /**
    * Query all relations recursively.
    */
   withAllRecursive (depth: number = 3): this {
